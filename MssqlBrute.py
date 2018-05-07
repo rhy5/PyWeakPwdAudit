@@ -45,23 +45,26 @@ class MssqlAuth:
 
 
 class MssqlBruteTester:
-    def __init__(self, userdict, passwords=None):
-        self.userdict = userdict
+    def __init__(self, passlist, username='sa'):
+        self.passlist = passlist
         pass
     
     def test(self, task):
         (host,port) = (task[0],task[1])
         rs = []
         auth = MssqlAuth( (host, port) )
-        for username in self.userdict:
-            for password in self.userdict[username]:
-                conn_ok, auth_ok, banner = auth.login(username, password)
-                if not conn_ok:
-                    return rs
-                if not auth_ok:
-                    continue
-                rs.append([host, port, 'MSSQL', username, password, encode_utf8(banner)])
-                break
+        #for username in self.userdict:
+        for password in self.passlist:
+            conn_ok, auth_ok, banner = auth.login(username, password)
+            if not conn_ok:
+		print("conn failed!")
+                return rs
+            if not auth_ok:
+		print("user:%s ,pass:%s login failed!"% (username, password))
+                continue
+            rs.append([host, port, 'MSSQL', username, password, encode_utf8(banner)])
+	    print("user:%s ,pass:%s login ok!"% (username,password))
+            break
         if not rs:
            logging.getLogger().info('SAFE %s:%d'%(host, port)) 
         return rs
@@ -70,20 +73,25 @@ class MssqlBruteTester:
 if __name__=='__main__':
     import sys
     import xutils
+    if len(sys.argv)!=5:
+	print("usage:x.py host port passdictPath pathoflogfile")
+	exit(0)
     host,port = sys.argv[1],int(sys.argv[2])
     
-    userdict = dict()
+    passdict = []
     for ln in open(sys.argv[3]):
-        fs = ln.strip().split(':',1)
-        if len(fs)!=2:
-            continue
-        username = fs[0]
-        password = fs[1]
-        if username not in userdict:
-            userdict[username] = set()
-        userdict[username].add(password)
+        #fs = ln.strip().split(':',1)
+        #if len(fs)!=2:
+        #    continue
+        username = "sa"
+        password = ln.strip()
+        #if username not in userdict:
+        #    userdict[username] = set()
+        #userdict[username].add(password)
+	#print(password)
+	passdict.append(password)
     logger = xutils.initLogger(sys.argv[4])
-    tester = MssqlBruteTester(userdict)
+    tester = MssqlBruteTester(passdict)
     rs = tester.test( (host,port) )
     print rs
     
